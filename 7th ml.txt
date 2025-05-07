@@ -1,0 +1,87 @@
+import numpy as np
+
+# Parameters
+alpha, gamma, epsilon, episodes = 0.1, 0.9, 0.1, 1000
+q_table = np.zeros((25, 4))  # 5x5 grid, 4 actions
+
+def idx(state): return state[0] * 5 + state[1]
+
+def act(state):
+    return np.random.randint(4) if np.random.rand() < epsilon else np.argmax(q_table[idx(state)])
+
+def step(state, action):
+    r, c = state
+    moves = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    dr, dc = moves[action]
+    r, c = max(0, min(4, r + dr)), max(0, min(4, c + dc))
+    next_state = (r, c)
+    reward = 1 if next_state == (4, 4) else -0.1
+    return next_state, reward, next_state == (4, 4)
+
+# Training
+for ep in range(episodes):
+    state, total = (0, 0), 0
+    while True:
+        a = act(state)
+        next_s, r, done = step(state, a)
+        q_table[idx(state), a] += alpha * (r + gamma * np.max(q_table[idx(next_s)]) - q_table[idx(state), a])
+        state, total = next_s, total + r
+        if done: break
+    if (ep + 1) % 100 == 0:
+        print(f"Episode {ep + 1}, Total Reward: {total}")
+
+# Test
+def test():
+    s, path = (0, 0), [(0, 0)]
+    while s != (4, 4):
+        s, _, _ = step(s, np.argmax(q_table[idx(s)]))
+        path.append(s)
+    return path
+
+def show_path(p):
+    grid = np.full((5, 5), '.', dtype=str)
+    for r, c in p: grid[r, c] = 'P'
+    grid[0, 0], grid[4, 4] = 'S', 'G'
+    print("\nOptimal Path Grid:")
+    print('\n'.join(' '.join(row) for row in grid))
+
+def show_policy():
+    arrows = ['↑', '↓', '←', '→']
+    for i in range(5):
+        print(' '.join(arrows[np.argmax(q_table[idx((i, j))])] for j in range(5)))
+
+path = test()
+print("Learned Path:", path)
+show_path(path)
+print("\nPolicy Directions:")
+show_policy()
+
+
+modification:
+
+//reverse path
+reverse_path = list(reversed(path))
+print("Reversed Path:", reverse_path)
+
+def show_reverse_path(p):
+    grid = np.full((5, 5), '.', dtype=str)
+    for r, c in p: grid[r, c] = 'P'
+    grid[4, 4], grid[0, 0] = 'S', 'G'  # Now start at (4,4) and goal at (0,0)
+    print("\nReverse Path Grid:")
+    print('\n'.join(' '.join(row) for row in grid))
+
+show_reverse_path(reverse_path)
+
+
+//path from source to goal
+def find_path(source, goal):
+    s, path = source, [source]
+    while s != goal:
+        a = np.argmax(q_table[idx(s)])
+        s, _, _ = step(s, a)
+        path.append(s)
+        if len(path) > 100:  # safety check to prevent infinite loops
+            break
+    return path
+path = find_path((0, 0), (4, 4))
+print("Path from (0,0) to (4,4):", path)
